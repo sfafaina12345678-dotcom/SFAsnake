@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Snake</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0f172a; color: white; font-family: Arial, sans-serif; }
+       .header { padding: 15px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; }
+       .header h2 { font-size: 1.2rem; }
+       .back-btn { background: #334155; border: none; color: white; padding: 8px 15px; border-radius: 8px; }
+
+        #gameContainer { padding: 20px; }
+        canvas { background: #1e293b; display: block; margin: 0 auto; border: 2px solid #38bdf8; }
+       .info { text-align: center; margin: 15px 0; font-size: 1.1rem; }
+
+       .level-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 20px; }
+       .level-btn {
+            background: #334155; border: none; color: white; padding: 15px 0;
+            border-radius: 8px; font-weight: bold; position: relative;
+        }
+       .level-btn.locked { background: #1e293b; color: #64748b; }
+       .level-btn.completed { background: #166534; }
+       .level-btn.current { background: #22c55e; color: #0f172a; }
+       .timer { font-size: 0.6rem; position: absolute; bottom: 2px; left: 0; right: 0; }
+
+       .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center;
+            text-align: center; padding: 20px; z-index: 100;
+        }
+       .overlay-content { background: #1e293b; padding: 30px; border-radius: 16px; }
+       .ad-btn { background: #38bdf8; color: #0f172a; border: none; padding: 15px 30px;
+                  border-radius: 8px; font-weight: bold; margin-top: 20px; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='index.html'">← Back</button>
+        <h2>Level Select</h2>
+        <div id="userInfo"></div>
+    </div>
+
+    <div id="gameContainer" style="display:none;">
+        <div class="info">Level: <span id="currentLevel">1</span> | Score: <span id="score">0</span> | Target: <span id="target">5</span></div>
+        <canvas id="game" width="350" height="350"></canvas>
+    </div>
+
+    <div id="levelSelect">
+        <div class="info">Complete levels to unlock next ones</div>
+        <div class="level-grid" id="levelGrid"></div>
+    </div>
+
+    <div class="overlay" id="adOverlay">
+        <div class="overlay-content">
+            <h2>🎮 Watch Ad to Play</h2>
+            <p style="margin: 15px 0; color: #94a3b8;">Watch a short ad to unlock this level</p>
+            <button class="ad-btn" onclick="showAdAndPlay()">WATCH AD & PLAY</button>
+        </div>
+    </div>
+
+    <script>
+        // Telegram Setup
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => window.location.href = 'index.html');
+
+        // Game Config
+        const TOTAL_LEVELS = 10;
+        const NEXT_LEVEL_WAIT = 3 * 60 * 1000; // 3 minute
+        const REPLAY_WAIT = 22 * 60 * 60 * 1000; // 22 ghante
+
+        let gameState = JSON.parse(localStorage.getItem('snakeGameState')) || {
+            unlockedLevel: 1,
+            levels: {}
+        };
+
+        let selectedLevel = null;
+        let canvas, ctx, snake, food, direction, score, target, gameLoop;
+
+        function saveState() {
+            localStorage.setItem('snakeGameState', JSON.stringify(gameState));
+        }
+
+        function initLevelGrid() {
+            const grid = document.getElementById('levelGrid');
+            grid.innerHTML = '';
+
+            for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'level-btn';
+
+                let status = getLevelStatus(i);
+                let timeLeft = getTimeLeft(i);
+
+                if (status === 'locked') {
+                    btn.classList.add('locked');
+                    btn.innerHTML = `🔒 ${i}`;
+                } else if (status === 'completed') {
+                    btn.classList.add('completed');
+                    btn.innerHTML = `✓ ${i}<div class="timer">${timeLeft}</div>`;
+                } else if (status === 'current') {
+                    btn.classList.add('current');
+                    btn.innerHTML = `▶ ${i}`;
+                } else if (status === 'waiting') {
+                    btn.classList.add('locked');
+                    btn.innerHTML = `⏳ ${i}<div class="timer">${timeLeft}</div>`;
+                }
+
+                btn.onclick = () => selectLevel(i, status);
+                grid.appendChild(btn);
+            }
+        }
+
+        function getLevelStatus(level) {
+            if (level > gameState.unlockedLevel) return 'locked';
+
+            let levelData = gameState.levels[level];
+            if (!levelData) return level === gameState.unlockedLevel? 'current' : 'locked';
+
+            let now = Date.now();
+            if (levelData.completedAt) {
+                let nextPlayTime = levelData.completedAt + REPLAY_WAIT;
+                if (now < nextPlayTime) return 'completed';
+            }
+
+            if (level === gameState.unlockedLevel) return 'current';
+            return 'waiting';
+        }
+
+        function getTimeLeft(level) {
+            let levelData = gameState.levels[level];
+            if (!levelData ||!levelData.completedAt) return '';
+
+            let waitTime = level === gameState.unlockedLevel? NEXT_LEVEL_WAIT : REPLAY_WAIT;
+            let timeLeft = (levelData.completedAt + waitTime) - Date.now();
+            if (timeLeft <= 0) return 'Ready';
+
+            let hours = Math.floor(timeLeft / 3600000);
+            let mins = Math.floor((timeLeft % 3600000) / 60000);
+            return hours > 0? `${hours}h ${mins}m` : `${mins}m`;
+        }
+
+        function selectLevel(level, status) {
+            if (status === 'locked' || status === 'completed') {
+                tg.showAlert('Level locked. Wait for timer to finish.');
+                return;
+            }
+
+            selectedLevel = level;
+            document.getElementById('adOverlay').style.display = 'flex';
+        }
+
+        function showAdAndPlay() {
+            // Yaha Monetag ka ad call kar
+            // show_11059500().then(() => {
+            // startGame();
+            // }).catch(() => {
+            // tg.showAlert('Ad failed to load. Try again.');
+            // });
+
+            // Testing ke liye direct start kar raha hu. Tu ad function yaha laga dena
+            tg.showPopup({
+                title: 'Ad Playing...',
+                message: 'Yaha Monetag ka ad chalega',
+                buttons: [{type: 'ok'}]
+            }, () => {
+                startGame();
+            });
+        }
+
+        function startGame() {
+            document.getElementById('adOverlay').style.display = 'none';
+            document.getElementById('levelSelect').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+
+            // Level ke hisaab se difficulty
+            target = selectedLevel * 5; // Level 1=5, Level 10=50 score
+            document.getElementById('currentLevel').innerText = selectedLevel;
+            document.getElementById('target').innerText = target;
+
+            initGame();
+        }
+
+        function initGame() {
+            canvas = document.getElementById('game');
+            ctx = canvas.getContext('2d');
+
+            const gridSize = 20;
+            snake = [{x: 160, y: 160}];
+            direction = {x: gridSize, y: 0};
+            score = 0;
+            food = randomFood();
+
+            document.addEventListener('keydown', changeDirection);
+
+            // Touch controls ke liye
+            let touchStartX, touchStartY;
+            canvas.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            });
+            canvas.addEventListener('touchmove', e => {
+                if (!touchStartX) return;
+                let dx = e.touches[0].clientX - touchStartX;
+                let dy = e.touches[0].clientY - touchStartY;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    if (dx > 0 && direction.x === 0) direction = {x: gridSize, y: 0};
+                    else if (dx < 0 && direction.x === 0) direction = {x: -gridSize, y: 0};
+                } else {
+                    if (dy > 0 && direction.y === 0) direction = {x: 0, y: gridSize};
+                    else if (dy < 0 && direction.y === 0) direction = {x: 0, y: -gridSize};
+                }
+                touchStartX = null;
+            });
+
+            clearInterval(gameLoop);
+            gameLoop = setInterval(draw, 100 - selectedLevel * 5); // Level badhne pe speed tez
+        }
+
+        function draw() {
+            // Move snake
+            const head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+
+            // Wall ya self collision
+            if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height ||
+                snake.some(s => s.x === head.x && s.y === head.y)) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(head);
+
+            // Food khaya
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                document.getElementById('score').innerText = score;
+                food = randomFood();
+
+                if (score >= target) {
+                    levelComplete();
+                    return;
+                }
+            } else {
+                snake.pop();
+            }
+
+            // Draw
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#22c55e';
+            snake.forEach(s => ctx.fillRect(s.x, s.y, 18, 18));
+
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(food.x, food.y, 18, 18);
+        }
+
+        function randomFood() {
+            const gridSize = 20;
+            return {
+                x: Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize,
+                y: Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize
+            };
+        }
+
+        function changeDirection(e) {
+            const gridSize = 20;
+            if (e.key === 'ArrowUp' && direction.y === 0) direction = {x: 0, y: -gridSize};
+            if (e.key === 'ArrowDown' && direction.y === 0) direction = {x: 0, y: gridSize};
+            if (e.key === 'ArrowLeft' && direction.x === 0) direction = {x: -gridSize, y: 0};
+            if (e.key === 'ArrowRight' && direction.x === 0) direction = {x: gridSize, y: 0};
+        }
+
+        function gameOver() {
+            clearInterval(gameLoop);
+            tg.showAlert(`Game Over! Score: ${score}/${target}`);
+            setTimeout(() => {
+                document.getElementById('gameContainer').style.display = 'none';
+                document.getElementById('levelSelect').style.display = 'block';
+            }, 1000);
+        }
+
+        function levelComplete() {
+            clearInterval(gameLoop);
+
+            // Save level data
+            gameState.levels[selectedLevel] = {
+                completedAt: Date.now()
+            };
+
+            // Unlock next level after 3 min
+            if (selectedLevel === gameState.unlockedLevel && selectedLevel < TOTAL_LEVELS) {
+                setTimeout(() => {
+                    gameState.unlockedLevel++;
+                    saveState();
+                    initLevelGrid();
+                }, NEXT_LEVEL_WAIT);
+            }
+
+            saveState();
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert(`Level ${selectedLevel} Complete! 🎉`);
+
+            setTimeout(() => {
+                document.getElementById('gameContainer').style.display = 'none';
+                document.getElementById('levelSelect').style.display = 'block';
+                initLevelGrid();
+            }, 1000);
+        }
+
+        // Init
+        initLevelGrid();
+        setInterval(initLevelGrid, 60000); // Har minute timer update karo
+    </script>
+</body>
+</html>
