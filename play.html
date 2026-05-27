@@ -156,14 +156,16 @@
         }
 
         function showAdAndPlay() {
-            // Yaha Monetag ka ad call kar
-            // show_11059500().then(() => {
-            // startGame();
-            // }).catch(() => {
-            // tg.showAlert('Ad failed to load. Try again.');
-            // });
+            
+// Rewarded interstitial
 
-            // Testing ke liye direct start kar raha hu. Tu ad function yaha laga dena
+show_11063199().then(() => {
+    // You need to add your user reward function here, which will be executed after the user watches the ad.
+    // For more details, please refer to the detailed instructions.
+    alert('You have seen an ad!');
+})
+
+        
             tg.showPopup({
                 title: 'Ad Playing...',
                 message: 'Yaha Monetag ka ad chalega',
