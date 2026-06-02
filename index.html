@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SFA Snake Master</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Telegram Ads SDK -->
+    <script src="https://richinfo.co/richpartners/telegram/js/tg-ob.js"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -12,22 +16,23 @@
             display: flex; align-items: center; justify-content: center;
             height: 100vh; text-align: center;
         }
-       .container { padding: 20px; }
+        .container { padding: 20px; }
         h1 { font-size: 2.5rem; margin-bottom: 10px; color: #38bdf8; }
         p { color: #94a3b8; margin-bottom: 40px; }
-       .play-btn {
+        .play-btn {
             background: #22c55e; color: #0f172a; border: none;
             padding: 18px 60px; font-size: 1.5rem; font-weight: bold;
             border-radius: 12px; cursor: pointer; transition: 0.2s;
         }
-       .play-btn:active { transform: scale(0.95); }
+        .play-btn:active { transform: scale(0.95); }
+        .play-btn:disabled { background: #475569; cursor: not-allowed; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🐍 SNAKE MASTER</h1>
         <p>10 Challenging Levels. Beat Them All!</p>
-        <button class="play-btn" onclick="goToGame()">PLAY</button>
+        <button class="play-btn" id="playBtn" onclick="watchAdAndPlay()">PLAY</button>
     </div>
 
     <script>
@@ -38,14 +43,39 @@
         tg.setHeaderColor('#0f172a');
         tg.setBackgroundColor('#0f172a');
 
-        function goToGame() {
-            // Yaha tu Monetag ka ad function call kar sakta hai
-            // show_11059500().then(() => {
-            // window.location.href = 'play.html';
-            // });
+        // Telegram Ads Setup
+        window.TelegramAdsController = new TelegramAdsController();
+        window.TelegramAdsController.initialize({
+            pubId: "1013432",
+            appId: "7629",
+        });
 
-            // Filhal direct bhej raha hu. Ad ka code tu laga lena
-            window.location.href = 'play.html';
+        let adWatched = false;
+
+        // PLAY button ka function
+        function watchAdAndPlay() {
+            const btn = document.getElementById('playBtn');
+            btn.disabled = true;
+            btn.innerText = "Loading Ad...";
+
+            // Ad dikhao
+            window.TelegramAdsController.showAd().then(() => {
+                // Ad poora dekha = Reward + Game Start
+                adWatched = true;
+                tg.showAlert("You earned +10 Coins! Starting game...");
+                
+                // Yaha apna game ka page khol de
+                setTimeout(() => {
+                    window.location.href = 'play.html';
+                }, 1000);
+                
+            }).catch((error) => {
+                // Ad fail ya skip
+                console.log("Ad error:", error);
+                btn.disabled = false;
+                btn.innerText = "PLAY";
+                tg.showAlert("Please watch full ad to play");
+            });
         }
     </script>
 </body>
