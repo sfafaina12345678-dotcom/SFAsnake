@@ -35,48 +35,6 @@
         <button class="play-btn" id="playBtn" onclick="watchAdAndPlay()">PLAY</button>
     </div>
 
-    <script>
-        // Telegram Mini App Setup
-        let tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-        tg.setHeaderColor('#0f172a');
-        tg.setBackgroundColor('#0f172a');
-
-        // Telegram Ads Setup
-        window.TelegramAdsController = new TelegramAdsController();
-        window.TelegramAdsController.initialize({
-            pubId: "1013432",
-            appId: "7629",
-        });
-
-        let adWatched = false;
-
-        // PLAY button ka function
-        function watchAdAndPlay() {
-            const btn = document.getElementById('playBtn');
-            btn.disabled = true;
-            btn.innerText = "Loading Ad...";
-
-            // Ad dikhao
-            window.TelegramAdsController.showAd().then(() => {
-                // Ad poora dekha = Reward + Game Start
-                adWatched = true;
-                tg.showAlert("You earned +10 Coins! Starting game...");
-                
-                // Yaha apna game ka page khol de
-                setTimeout(() => {
-                    window.location.href = 'play.html';
-                }, 1000);
-                
-            }).catch((error) => {
-                // Ad fail ya skip
-                console.log("Ad error:", error);
-                btn.disabled = false;
-                btn.innerText = "PLAY";
-                tg.showAlert("Please watch full ad to play");
-            });
-        }
-    </script>
+    
 </body>
 </html>
