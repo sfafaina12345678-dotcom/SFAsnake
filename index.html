@@ -11,8 +11,7 @@ body{font-family:Arial,sans-serif;background:#0a0a0a;color:#fff;padding:15px}
 .header h1{font-size:20px;color:#ff3c00}
 .search{width:100%;margin:15px 0;padding:12px;border-radius:8px;border:0;background:#1a1a1a;color:#fff;font-size:15px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
-.card{background:#181818;border-radius:12px;overflow:hidden;text-decoration:none;color:#fff;transition:.2s;border:1px solid #222}
-.card:active{transform:scale(0.97)}
+.card{background:#181818;border-radius:12px;overflow:hidden;text-decoration:none;color:#fff;border:1px solid #222}
 .card img{width:100%;height:110px;object-fit:cover;background:#222;display:block}
 .card .info{padding:10px}
 .card .info h3{font-size:14px;line-height:1.3;height:36px;overflow:hidden}
@@ -21,67 +20,32 @@ body{font-family:Arial,sans-serif;background:#0a0a0a;color:#fff;padding:15px}
 </style>
 </head>
 <body>
-
-<div class="header">
-<h1>🔥 PANTHER GAMERS</h1>
-<span style="font-size:12px;background:#ff3c00;padding:4px 8px;border-radius:20px">LIVE</span>
-</div>
-
+<div class="header"><h1>🔥 PANTHER GAMERS</h1><span style="font-size:12px;background:#ff3c00;padding:4px 8px;border-radius:20px">LIVE</span></div>
 <input type="text" id="search" class="search" placeholder="Search video..." onkeyup="filterVideos()">
-
 <div class="grid" id="grid"></div>
-
 <div class="footer">Panther Gamers © 2026 - All Videos Hosted on Telegram</div>
-
 <script>
-// ===== YAHAN APNE VIDEOS ADD KAR =====
-// upload.html se jo direct link milega wo yahan paste karna
 const videos = [
   {
-    title: "BGMI Tips & Tricks 2026",
-    thumb: "https://via.placeholder.com/300x170/ff3c00/fff?text=BGMI",
+    title: "My First Panther Video",
+    thumb: "https://via.placeholder.com/300x170/ff3c00/fff?text=PANTHER+VIDEO+1",
     link: "https://api.telegram.org/file/bot8895544903:AAHbD3V0yU-4vdXl8Ih_EadrmnZAgJWlHtQ/videos/file_1.mp4",
     date: "Today"
-  },
-  {
-    title: "Free Fire Headshot Trick",
-    thumb: "https://via.placeholder.com/300x170/00d2ff/000?text=Free+Fire",
-    link: "https://api.telegram.org/file/bot8895544903:AAHbD3V0yU-4vdXl8Ih_EadrmnZAgJWlHtQ/videos/file_2.mp4",
-    date: "Yesterday"
-  },
-  {
-    title: "Test Video - Demo",
-    thumb: "https://via.placeholder.com/300x170/333/fff?text=TEST",
-    link: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    date: "Now"
   }
 ];
-
 const grid = document.getElementById('grid');
-
 function render(list){
   grid.innerHTML = '';
   list.forEach(v => {
-    grid.innerHTML += `
-    <a class="card" href="player.html?video=${encodeURIComponent(v.link)}&title=${encodeURIComponent(v.title)}">
-      <img src="${v.thumb}" loading="lazy">
-      <div class="info">
-        <h3>${v.title}</h3>
-        <span>${v.date} • Click to Watch</span>
-      </div>
-    </a>`;
+    grid.innerHTML += `<a class="card" href="player.html?video=${encodeURIComponent(v.link)}&title=${encodeURIComponent(v.title)}"><img src="${v.thumb}"><div class="info"><h3>${v.title}</h3><span>${v.date} • Click to Watch</span></div></a>`;
   });
 }
-
 function filterVideos(){
   let q = document.getElementById('search').value.toLowerCase();
   let filtered = videos.filter(v => v.title.toLowerCase().includes(q));
   render(filtered);
 }
-
-// First load
 render(videos);
 </script>
-
 </body>
 </html>
