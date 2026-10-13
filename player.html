@@ -1,16 +1,60 @@
 <!DOCTYPE html>
-<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Player</title>
-<style>body{margin:0;background:#000;color:#fff;font-family:sans-serif}#adBox{width:100%;height:250px;background:#222;display:flex;align-items:center;justify-content:center}video{width:100%;max-height:90vh}</style>
-<!-- Monetag ka code yaha paste karna -->
-<!-- <script src="//monetag.com/pre-roll.js"></script> -->
-</head><body>
-<div id="adBox">AD - Monetag Pre-Roll Yaha Lagega (15 sec)</div>
-<h3 id="t" style="padding:10px"></h3>
-<video id="v" controls autoplay></video>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panther Gamers Player</title>
+<link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
+<style>
+body{margin:0;background:#000;color:#fff;font-family:sans-serif}
+.vjs-fluid{padding-top:56.25%}
+#title{padding:12px}
+</style>
+</head>
+<body>
+<h3 id="title">Loading...</h3>
+<video id="player" class="video-js vjs-fluid" controls playsinline></video>
+
+<script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+<script src="https://imasdk.googleapis.com/js/sdkloader/ima3.js"></script>
+<script src="https://unpkg.com/videojs-contrib-ads@7.0.0/dist/videojs-contrib-ads.min.js"></script>
+<script src="https://unpkg.com/videojs-ima@2.2.0/dist/videojs.ima.js"></script>
+
 <script>
-let p=new URLSearchParams(location.search); let vl=p.get('video'); let tl=p.get('title');
-document.getElementById('t').innerText=tl; document.getElementById('v').src=vl;
-// Monetag trigger:
-// setTimeout(()=>{ document.getElementById('adBox').style.display='none'; document.getElementById('v').play(); }, 5000);
-if(vl) document.getElementById('v').src=vl;
-</script></body></html>
+const urlParams = new URLSearchParams(window.location.search);
+const videoLink = urlParams.get('video');
+const videoTitle = urlParams.get('title') || 'Panther Gamers Video';
+document.getElementById('title').innerText = videoTitle;
+
+async function initPlayer() {
+  let ip = '0.0.0.0';
+  try {
+    let res = await fetch('https://api.ipify.org?format=json');
+    let data = await res.json();
+    ip = data.ip;
+  } catch(e){}
+
+  const ua = encodeURIComponent(navigator.userAgent);
+  const vastUrl = `https://16793.rtb.adp3.net/pre-roll-rp?pubid=1013432&siteid=410030&ip=${ip}&ua=${ua}`;
+
+  const player = videojs('player', { fluid: true });
+  player.ima({ adTagUrl: vastUrl });
+  
+  // IMA ready hone ke baad video source lagao
+  player.on('readyforpreroll', () => {
+    player.src({ src: videoLink, type: 'video/mp4' });
+  });
+
+  // Agar ad fail ho to bhi video chal jaye
+  player.on('adserror', () => {
+    player.src({ src: videoLink, type: 'video/mp4' });
+    player.play();
+  });
+
+  player.ima.initializeAdDisplayContainer();
+  player.ima.requestAds();
+}
+
+initPlayer();
+</script>
+</body>
+</html>
