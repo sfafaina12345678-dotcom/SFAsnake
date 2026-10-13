@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Upload - Panther Gamers</title>
+<style>body{font-family:sans-serif;background:#111;color:#fff;padding:20px}.box{max-width:500px;margin:auto;background:#222;padding:20px;border-radius:10px}button{width:100%;padding:12px;background:#08c;border:0;color:#fff;border-radius:8px;font-weight:bold}textarea{width:100%;height:80px;margin-top:10px;background:#000;color:#0f0}</style>
+</head>
+<body>
+<div class="box"><h2>Panther Uploader</h2>
+<input type="file" id="f" accept="video/*" style="width:100%;margin:10px 0">
+<button onclick="up()">Upload to Telegram</button>
+<p id="s"></p><textarea id="l" style="display:none"></textarea>
+</div>
+<script>
+const TOKEN="8895544903:AAHbD3V0yU-4vdXl8Ih_EadrmnZAgJWlHtQ"; const CHAT="-1002897263402";
+async function up(){
+  let file=document.getElementById('f').files[0]; if(!file) return alert("Video select karo");
+  document.getElementById('s').innerText="Uploading..."; let fd=new FormData(); fd.append("chat_id",CHAT); fd.append("video",file); fd.append("supports_streaming",true);
+  let r=await fetch(`https://api.telegram.org/bot${TOKEN}/sendVideo`,{method:"POST",body:fd}); let d=await r.json();
+  if(d.ok){ let fid=d.result.video.file_id; let fr=await fetch(`https://api.telegram.org/bot${TOKEN}/getFile?file_id=${fid}`); let fd2=await fr.json(); let link=`https://api.telegram.org/file/bot${TOKEN}/${fd2.result.file_path}`;
+  document.getElementById('s').innerText="✅ Done"; let t=document.getElementById('l'); t.style.display="block"; t.value=link; } else { document.getElementById('s').innerText="Error: "+d.description; }
+}
+</script></body></html>
